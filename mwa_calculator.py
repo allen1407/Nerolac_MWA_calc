@@ -219,6 +219,18 @@ def get_next_slab_amount(business, current_amount):
             return amt
     return 0
 
+def calculate_balance_category(next_slab, mtd_value):
+    """
+    Calculate Balance Category with conditional logic:
+    - If Next Slab Category = 0 AND MTD Category > 0 → Balance = 0 
+      (target already achieved/maxed out)
+    - Otherwise → Balance = |Next Slab Category - MTD Category|
+    """
+    if next_slab == 0 and mtd_value > 0:
+        return 0
+    else:
+        return abs(next_slab - mtd_value)
+
 def format_visit_month(month_val, creation_date_val):
     try:
         m = str(int(float(str(month_val)))).zfill(2)
@@ -231,7 +243,7 @@ def format_visit_month(month_val, creation_date_val):
         year = ''
     return f"{m}.{year}"
 
-# ── Core Processing ───────────────────────────────────────────────────────────
+# ── Core Processing ───────────────────────────────────────────────────────
 
 def process_mwa(fa: pd.DataFrame) -> dict:
 
@@ -440,6 +452,10 @@ def process_mwa(fa: pd.DataFrame) -> dict:
         next_amt = get_next_slab_amount(biz, current_amount)
         curr_amt_val = _to_amount(current_amount)
 
+        # ────────────────────────────────────────────────────────────────────────
+        # MODIFIED LOGIC: Apply calculate_balance_category() for all rows
+        # ────────────────────────────────────────────────────────────────────────
+        
         rows.append({
             'Id': f'KNPL - {kid} - 1',
             'Business': biz,
@@ -447,7 +463,7 @@ def process_mwa(fa: pd.DataFrame) -> dict:
             'Category': 'Category 1',
             'Next Slab Category': next_c1,
             'MTD Category': cat1_v,
-            'Balance Category': abs(next_c1 - cat1_v),
+            'Balance Category': calculate_balance_category(next_c1, cat1_v),
         })
         rows.append({
             'Id': f'KNPL - {kid} - 2',
@@ -456,7 +472,7 @@ def process_mwa(fa: pd.DataFrame) -> dict:
             'Category': 'Category 2',
             'Next Slab Category': next_c2,
             'MTD Category': cat2_v,
-            'Balance Category': abs(next_c2 - cat2_v),
+            'Balance Category': calculate_balance_category(next_c2, cat2_v),
         })
         rows.append({
             'Id': f'KNPL - {kid} - Amount',
@@ -465,7 +481,7 @@ def process_mwa(fa: pd.DataFrame) -> dict:
             'Category': 'Amount',
             'Next Slab Category': next_amt,
             'MTD Category': curr_amt_val,
-            'Balance Category': abs(next_amt - curr_amt_val),
+            'Balance Category': calculate_balance_category(next_amt, curr_amt_val),
         })
 
     fa_upload_summary = pd.DataFrame(rows, columns=[
